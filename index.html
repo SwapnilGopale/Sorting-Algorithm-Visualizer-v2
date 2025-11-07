@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorting Algorithm Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Define CSS variables for colors so JS can read them */
+        :root {
+            --color-bg: #111827; /* gray-900 */
+            --color-card: #1f2937; /* gray-800 */
+            --color-text: #f3f4f6; /* gray-100 */
+            --color-primary: #60a5fa; /* blue-400 */
+            --color-compare: #facc15; /* yellow-400 */
+            --color-swap: #f87171; /* red-400 */
+            --color-sorted: #4ade80; /* green-400 */
+            --color-pivot: #f97316; /* orange-500 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+        }
+        /* Custom scrollbar for overlays */
+        .overlay-content::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .overlay-content::-webkit-scrollbar-thumb {
+            background: var(--color-primary);
+            border-radius: 3px;
+        }
+        .overlay-content::-webkit-scrollbar-track {
+            background: #374151; /* gray-700 */
+        }
+        /* Style for range inputs */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #374151; /* gray-700 */
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="p-4 lg:p-8">
+
+    <!-- Visually hidden ARIA live region for announcements -->
+    <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Header -->
+    <header class="text-center mb-6">
+        <h1 class="text-3xl lg:text-4xl font-bold text-white">Sorting Algorithm Comparison</h1>
+        <p class="text-lg text-gray-400">Visualizing 10 algorithms side-by-side</p>
+    </header>
+
+    <!-- Controls Container -->
+    <div id="controls-container" class="p-4 lg:p-6 bg-gray-800 rounded-lg shadow-xl mb-6 sticky top-4 z-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-6">
+            
+            <!-- Core Controls -->
+            <div class="space-y-3">
+                <label for="size-slider" class="block text-sm font-medium text-gray-300">
+                    Array Size: <span id="size-value" class="font-bold text-white">50</span>
+                </label>
+                <input id="size-slider" type="range" min="10" max="300" value="50" class="w-full">
+            </div>
+            <div class="space-y-3">
+                <label for="speed-slider" class="block text-sm font-medium text-gray-300">
+                    Delay (ms): <span id="speed-value" class="font-bold text-white">25</span>
+                </label>
+                <input id="speed-slider" type="range" min="0" max="200" value="25" class="w-full">
+            </div>
+            <div class="space-y-3">
+                <label for="distribution-select" class="block text-sm font-medium text-gray-300">Input Distribution</label>
+                <select id="distribution-select" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="random">Random</option>
+                    <option value="reversed">Reversed</option>
+                    <option value="nearlySorted">Nearly Sorted (10% noise)</option>
+                    <option value="fewUnique">Few Unique (k=5)</option>
+                    <option value="gaussian">Gaussian Distribution</option>
+                </select>
+            </div>
+            <div class="space-y-3">
+                <label for="seed-input" class="block text-sm font-medium text-gray-300">Seed (optional)</label>
+                <input id="seed-input" type="number" placeholder="Empty for random" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <!-- Algorithm Selection -->
+        <fieldset class="mt-4">
+            <legend class="text-sm font-medium text-gray-300 mb-2">Algorithms</legend>
+            <div id="algo-checkbox-container" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-x-4 gap-y-2">
+                <!-- Checkboxes will be injected here by JS -->
+            </div>
+        </fieldset>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3 mt-5 border-t border-gray-700 pt-4">
+            <button id="run-selected-btn" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold transition duration-150 ease-in-out">Run Selected</button>
+            <button id="run-all-btn" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold transition duration-150 ease-in-out">Run All</button>
+            <button id="pause-btn" class="py-2 px-4 bg-yellow-600 hover:bg-yellow-700 rounded-md font-semibold transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed" disabled>Pause</button>
+            <button id="resume-btn" class="py-2 px-4 bg-green-600 hover:bg-green-700 rounded-md font-semibold transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed" disabled>Resume</button>
+            <button id="cancel-btn" class="py-2 px-4 bg-red-600 hover:bg-red-700 rounded-md font-semibold transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed" disabled>Cancel</button>
+        </div>
+    </div>
+
+    <!-- Global Legend -->
+    <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-6 text-sm">
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5" style="background-color: var(--color-primary);"></span>Primary</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5" style="background-color: var(--color-compare);"></span>Compare</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5" style="background-color: var(--color-swap);"></span>Swap/Write</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5" style="background-color: var(--color-pivot);"></span>Pivot</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5" style="background-color: var(--color-sorted);"></span>Sorted</span>
+    </div>
+
+    <!-- Visualizer Grid -->
+    <main id="visualizer-grid" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-5 gap-4 lg:gap-6">
+        <!-- Algorithm cards will be injected here -->
+    </main>
+    
+
+<script type="module">
+'use strict';
+
+// =================================================================================
+// CHANGELOG:
+// - Implemented single, shared controller for Pause/Resume/Cancel.
+// - Resolved CSS vars to JS COLORS object for canvas drawing.
+// - Added 10 algorithms: Bubble, Selection, Insertion, Merge, Quick, Heap,
+//   Counting, Radix (LSD), Bucket, and Shell sort.
+// - Implemented robust rendering with `barWidth` and `maxVal` scaling.
+// - Added instrumentation: Time, Comparisons, Writes, Frames.
+// - Implemented concurrency: All selected algorithms run via `Promise.allSettled`.
+// - Added controls: Algorithm multiselect, Run Selected/All, Input distribution
+//   (5 types), and Seed input.
+// - Implemented algorithm-specific visuals:
+//   - QuickSort: Pivot highlight (amber) and partition range overlay.
+//   - Counting/Radix: Absolute overlay for count[]/prefix sum visualization.
+//   - BucketSort: Overlay for bucket distribution, sorts buckets w/ Insertion Sort.
+// - Added post-run validation to mark "Complete" or "Failed".
+// - Added ARIA live region for accessibility announcements.
+// - Implemented localStorage persistence for all controls.
+// - Refactored drawing, metrics, and state management into helper functions.
+// =================================================================================
+
+
+// --- CONSTANTS ---
+const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = 200;
+
+// Must-Have: Resolve CSS variables to real colors once
+let COLORS = {};
+
+const ALGORITHMS = [
+    { key: 'bubbleSort', name: 'Bubble', fn: bubbleSort },
+    { key: 'selectionSort', name: 'Selection', fn: selectionSort },
+    { key: 'insertionSort', name: 'Insertion', fn: insertionSort },
+    { key: 'mergeSort', name: 'Merge', fn: mergeSort },
+    { key: 'quickSort', name: 'Quick', fn: quickSort },
+    { key: 'heapSort', name: 'Heap', fn: heapSort },
+    { key: 'countingSort', name: 'Counting', fn: countingSort },
+    { key: 'radixSort', name: 'Radix (LSD)', fn: radixSort },
+    { key: 'bucketSort', name: 'Bucket', fn: bucketSort },
+    { key: 'shellSort', name: 'Shell', fn: shellSort },
+];
+
+// --- STATE ---
+let mainController = {
+    paused: false,
+    cancelled: false
+};
+let activeInstances = [];
+let lastSettings = {};
+
+// --- DOM ELEMENTS ---
+const dom = {
+    grid: document.getElementById('visualizer-grid'),
+    sizeSlider: document.getElementById('size-slider'),
+    sizeValue: document.getElementById('size-value'),
+    speedSlider: document.getElementById('speed-slider'),
+    speedValue: document.getElementById('speed-value'),
+    distSelect: document.getElementById('distribution-select'),
+    seedInput: document.getElementById('seed-input'),
+    algoCheckContainer: document.getElementById('algo-checkbox-container'),
+    runSelectedBtn: document.getElementById('run-selected-btn'),
+    runAllBtn: document.getElementById('run-all-btn'),
+    pauseBtn: document.getElementById('pause-btn'),
+    resumeBtn: document.getElementById('resume-btn'),
+    cancelBtn: document.getElementById('cancel-btn'),
+    liveRegion: document.getElementById('aria-live-region'),
+};
+
+// =================================================================================
+// CORE CONTROL & VISUALIZATION
+// =================================================================================
+
+/**
+ * Main entry point, called on page load.
+ */
+function initialize() {
+    // Must-Have: Resolve CSS vars to JS constants
+    const rootStyle = getComputedStyle(document.documentElement);
+    COLORS = {
+        primary: rootStyle.getPropertyValue('--color-primary').trim(),
+        compare: rootStyle.getPropertyValue('--color-compare').trim(),
+        swap: rootStyle.getPropertyValue('--color-swap').trim(),
+        sorted: rootStyle.getPropertyValue('--color-sorted').trim(),
+        pivot: rootStyle.getPropertyValue('--color-pivot').trim(),
+        bg: rootStyle.getPropertyValue('--color-card').trim(),
+        text: rootStyle.getPropertyValue('--color-text').trim(),
+    };
+
+    populateAlgoCheckboxes();
+    bindEventListeners();
+    loadSettings();
+}
+
+/**
+ * Creates and injects algorithm checkboxes into the DOM.
+ */
+function populateAlgoCheckboxes() {
+    const content = ALGORITHMS.map(algo => `
+        <div class="flex items-center">
+            <input id="chk-${algo.key}" data-key="${algo.key}" type="checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+            <label for="chk-${algo.key}" class="ml-2 text-sm text-gray-200 select-none">${algo.name}</label>
+        </div>
+    `).join('');
+    dom.algoCheckContainer.innerHTML = content;
+}
+
+/**
+ * Binds all static event listeners.
+ */
+function bindEventListeners() {
+    dom.sizeSlider.addEventListener('input', e => dom.sizeValue.textContent = e.target.value);
+    dom.speedSlider.addEventListener('input', e => dom.speedValue.textContent = e.target.value);
+    
+    dom.runSelectedBtn.addEventListener('click', () => runVisualization(false));
+    dom.runAllBtn.addEventListener('click', () => runVisualization(true));
+
+    // Must-Have: Pause/Resume/Cancel controls
+    dom.pauseBtn.addEventListener('click', () => {
+        if (!mainController.cancelled) {
+            mainController.paused = true;
+            setButtonStates(true, true, false, true); // Running, Paused, Not Resumed, Can Cancel
+            announce('Visualization paused.');
+        }
+    });
+    dom.resumeBtn.addEventListener('click', () => {
+        mainController.paused = false;
+        setButtonStates(true, false, true, true); // Running, Not Paused, Resumed, Can Cancel
+        announce('Visualization resumed.');
+    });
+    dom.cancelBtn.addEventListener('click', () => {
+        mainController.cancelled = true;
+        mainController.paused = false; // Ensure loops exit
+        setButtonStates(false, false, false, false); // Not Running
+        announce('Visualization cancelled.');
+        // Clear active instances to prevent memory leaks
+        activeInstances = [];
+    });
+}
+
+/**
+ * Main function to start the visualizations.
+ * @param {boolean} runAll - Whether to run all algos or just selected.
+ */
+async function runVisualization(runAll) {
+    setButtonStates(true, false, true, true); // Running, Not Paused, Resumed, Can Cancel
+    mainController.paused = false;
+    mainController.cancelled = false;
+    activeInstances = [];
+    
+    const settings = getSettings();
+    saveSettings(settings); // Must-Have: Persist settings
+    
+    const selectedKeys = runAll 
+        ? ALGORITHMS.map(a => a.key)
+        : settings.selectedAlgos;
+
+    if (selectedKeys.length === 0) {
+        announce('No algorithms selected.');
+        setButtonStates(false, false, false, false);
+        return;
+    }
+
+    const baseArray = createArray(settings.size, settings.distribution, settings.seed);
+    
+    dom.grid.innerHTML = ''; // Clear previous visualizations
+    announce(`Starting visualization for ${selectedKeys.length} algorithms.`);
+
+    for (const key of selectedKeys) {
+        const algoDef = ALGORITHMS.find(a => a.key === key);
+        if (!algoDef) continue;
+
+        const { card, ctx, metricsEl, statusEl, overlayEl } = createAlgoCard(algoDef.name);
+        dom.grid.appendChild(card);
+        
+        const arrCopy = [...baseArray];
+        const instance = runAlgorithmInstance(
+            algoDef, arrCopy, ctx, metricsEl, statusEl, overlayEl, settings.speed
+        );
+        activeInstances.push(instance);
+    }
+
+    await Promise.allSettled(activeInstances);
+
+    if (mainController.cancelled) {
+        announce('All visualizations cancelled.');
+    } else {
+        announce('All visualizations complete.');
+    }
+    
+    setButtonStates(false, false, false, false); // Not Running
+}
+
+/**
+ * Creates the DOM structure for a single algorithm card.
+ * @param {string} name - The name of the algorithm.
+ * @returns {object} - Pointers to the card and its key elements.
+ */
+function createAlgoCard(name) {
+    const card = document.createElement('div');
+    card.className = 'algo-card bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col';
+    
+    card.innerHTML = `
+        <h2 class="text-xl font-semibold text-white p-4 text-center border-b border-gray-700">${name}</h2>
+        <div class="p-4 relative">
+            <!-- Canvas and its overlay container -->
+            <div class="relative w-full" style="padding-bottom: 50%;"> <!-- 2:1 Aspect Ratio -->
+                <canvas class="absolute top-0 left-0 w-full h-full"></canvas>
+                <!-- Must-Have: Overlay for Counting/Radix/Bucket -->
+                <div class="algo-overlay absolute inset-0 bg-gray-900 bg-opacity-80 p-2 text-xs text-gray-200 overflow-auto overlay-content hidden backdrop-blur-sm">
+                </div>
+            </div>
+            <!-- Must-Have: Instrumentation metrics line -->
+            <div class="metrics text-xs text-gray-400 mt-3 text-center break-words">Time: 0ms · Comp: 0 · Writes: 0 · Frames: 0</div>
+        </div>
+        <!-- Status -->
+        <div class="status-bar text-sm font-medium text-center p-2 mt-auto bg-gray-700 text-gray-400">Idle</div>
+    `;
+    
+    const canvas = card.querySelector('canvas');
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    
+    return {
+        card,
+        ctx: canvas.getContext('2d'),
+        metricsEl: card.querySelector('.metrics'),
+        statusEl: card.querySelector('.status-bar'),
+        overlayEl: card.querySelector('.algo-overlay')
+    };
+}
+
+/**
+ * Asynchronous wrapper to run a single algorithm instance.
+ * Manages stats, timing, validation, and final state.
+ */
+async function runAlgorithmInstance(algoDef, arr, ctx, metricsEl, statusEl, overlayEl, speed) {
+    const stats = { comparisons: 0, swapsOrWrites: 0 };
+    let frames = 0;
+    let startTime = performance.now();
+    let lastMetricsUpdateTime = 0;
+
+    /**
+     * Helper to draw array, update metrics, and increment frame count.
+     * This is passed to the algorithm function.
+     */
+    const update = async (highlights = {}, overlayData = {}) => {
+        frames++;
+        
+        // Initial draw
+        if (frames === 1) {
+             drawArray(ctx, arr, highlights, overlayData);
+        }
+
+        // Throttle metrics DOM updates to avoid layout thrashing
+        const now = performance.now();
+        if (now - lastMetricsUpdateTime > 50) { // Update DOM max 20fps
+            updateMetrics(metricsEl, stats, (now - startTime).toFixed(0), frames);
+            lastMetricsUpdateTime = now;
+        }
+
+        // Must-Have: Concurrency check
+        await wait(mainController, speed);
+        
+        // Re-draw after wait
+        drawArray(ctx, arr, highlights, overlayData);
+        updateOverlay(overlayEl, overlayData);
+    };
+
+    try {
+        updateStatus(statusEl, 'Running', 'blue-500');
+        
+        // Initial draw
+        await update();
+
+        // --- Execute the algorithm ---
+        await algoDef.fn(arr, mainController, update, stats, speed);
+
+        // --- Handle completion (if not cancelled) ---
+        if (!mainController.cancelled) {
+            const endTime = performance.now();
+            
+            // Must-Have: Validation
+            const isValid = validateArray(arr);
+            if (isValid) {
+                // Final sorted sweep animation
+                await drawSortedSweep(ctx, arr, speed);
+                updateStatus(statusEl, 'Complete', 'green-500');
+            } else {
+                updateStatus(statusEl, 'Failed', 'red-500');
+            }
+            
+            // Final metrics update
+            updateMetrics(metricsEl, stats, (endTime - startTime).toFixed(0), frames);
+        }
+    } catch (e) {
+        if (e.message === 'cancelled') {
+            updateStatus(statusEl, 'Cancelled', 'yellow-500');
+        } else {
+            console.error(`Error in ${algoDef.name}:`, e);
+            updateStatus(statusEl, 'Error', 'red-700');
+        }
+    }
+}
+
+// =================================================================================
+// DRAWING & UI HELPERS
+// =================================================================================
+
+/**
+ * Must-Have: Concurrency helper. Pauses execution and checks for cancellation.
+ * @param {object} controller - The shared mainController.
+ * @param {number} speed - The delay in ms.
+ */
+async function wait(controller, speed) {
+    // Only sleep if speed > 0
+    if (speed > 0) {
+        await new Promise(res => setTimeout(res, speed));
+    }
+    
+    // Must-Have: Pause loop
+    while (controller.paused) {
+        await new Promise(res => setTimeout(res, 50));
+    }
+    
+    // Must-Have: Cancel check
+    if (controller.cancelled) {
+        throw new Error('cancelled');
+    }
+}
+
+/**
+ * Must-Have: Robust rendering function.
+ * @param {CanvasRenderingContext2D} ctx - The canvas context.
+ * @param {number[]} array - The array to draw.
+ * @param {object} highlights - Map of { index: 'colorKey' }.
+ * @param {object} overlayData - Data for special overlays (QuickSort).
+ */
+function drawArray(ctx, array, highlights = {}, overlayData = {}) {
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Must-Have: Robust scaling
+    const n = array.length;
+    const maxVal = Math.max(1, ...array.filter(n => n >= 0 && n !== Infinity));
+    const barWidth = CANVAS_WIDTH / n;
+    const barHeightFactor = CANVAS_HEIGHT / maxVal;
+
+    // Must-Have: QuickSort partition overlay
+    if (overlayData.partition) {
+        const { low, high } = overlayData.partition;
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.07)';
+        ctx.fillRect(low * barWidth, 0, (high - low + 1) * barWidth, CANVAS_HEIGHT);
+    }
+
+    for (let i = 0; i < n; i++) {
+        // Handle undefined/Infinity values during intermediate steps (e.g., MergeSort)
+        const value = (array[i] === undefined || array[i] === Infinity) ? 0 : array[i];
+        
+        const barHeight = value * barHeightFactor;
+        const x = i * barWidth;
+        const y = CANVAS_HEIGHT - barHeight;
+
+        ctx.fillStyle = highlights[i] ? COLORS[highlights[i]] : COLORS.primary;
+        
+        // Use +0.5 to fill thin gaps between fractional bars
+        ctx.fillRect(x, y, barWidth + 0.5, barHeight);
+    }
+}
+
+/**
+ * Renders the final "sorted" animation sweep.
+ */
+async function drawSortedSweep(ctx, array, speed) {
+    const n = array.length;
+    const highlights = {};
+    
+    for (let i = 0; i < n; i++) {
+        highlights[i] = 'sorted';
+        drawArray(ctx, array, highlights);
+        
+        // Do a very fast sweep, respects speed setting but caps wait time
+        if (speed > 0) {
+            await new Promise(res => setTimeout(res, Math.min(10, 500 / n, speed)));
+        }
+        // No pause/cancel check here, this is a final "cleanup" animation
+    }
+}
+
+/**
+ * Must-Have: Update logic for Counting/Radix/Bucket overlays.
+ */
+function updateOverlay(overlayEl, overlayData) {
+    if (!overlayData || Object.keys(overlayData).length === 0 || (overlayData.counts === undefined && overlayData.buckets === undefined)) {
+        overlayEl.classList.add('hidden');
+        return;
+    }
+
+    let content = '';
+    if (overlayData.message) {
+        content += `<div class="font-bold mb-1">${overlayData.message}</div>`;
+    }
+
+    if (overlayData.counts) {
+        content += '<strong>Counts / Prefix Sum:</strong><div class="flex flex-wrap gap-x-2 gap-y-1 mt-1">';
+        content += overlayData.counts.map((count, i) => 
+            `<span class="font-mono bg-gray-700 px-1 rounded text-white">[${i}]:${count}</span>`
+        ).join('');
+        content += '</div>';
+    }
+    
+    if (overlayData.buckets) {
+        content += '<strong>Buckets:</strong><div class="space-y-1 mt-1">';
+        content += overlayData.buckets.map((bucket, i) => {
+            const items = bucket.length > 10 
+                ? `${bucket.slice(0, 10).join(', ')}... (${bucket.length})` 
+                : bucket.join(', ') || 'empty';
+            return `<div class="font-mono bg-gray-700 p-1 rounded"><b>[${i}]</b>: ${items}</div>`;
+        }).join('');
+        content += '</div>';
+    }
+
+    overlayEl.innerHTML = content;
+    overlayEl.classList.remove('hidden');
+}
+
+/**
+ * Must-Have: Updates the metrics DOM element.
+ */
+function updateMetrics(metricsEl, stats, time, frames) {
+    metricsEl.textContent = `Time: ${time}ms · Comp: ${stats.comparisons} · Writes: ${stats.swapsOrWrites} · Frames: ${frames}`;
+}
+
+/**
+ * Updates the status bar DOM element.
+ */
+function updateStatus(statusEl, text, colorClass) {
+    statusEl.textContent = text;
+    // Reset classes
+    statusEl.className = `status-bar text-sm font-medium text-center p-2 mt-auto bg-${colorClass} text-white`;
+}
+
+/**
+ * Toggles the enabled/disabled state of all control buttons.
+ */
+function setButtonStates(running, paused, resumed, cancellable) {
+    dom.runSelectedBtn.disabled = running;
+    dom.runAllBtn.disabled = running;
+    dom.pauseBtn.disabled = !running || paused || !resumed;
+    dom.resumeBtn.disabled = !running || !paused;
+    dom.cancelBtn.disabled = !cancellable;
+    
+    // Also disable sliders/inputs
+    dom.sizeSlider.disabled = running;
+    dom.speedSlider.disabled = running;
+    dom.distSelect.disabled = running;
+    dom.seedInput.disabled = running;
+}
+
+/**
+ * Must-Have: Posts a message to the ARIA live region.
+ * @param {string} message - The message to announce.
+ */
+function announce(message) {
+    dom.liveRegion.textContent = message;
+}
+
+// =================================================================================
+// SETTINGS & ARRAY GENERATION
+// =================================================================================
+
+/**
+ * Gets all current settings from the DOM.
+ */
+function getSettings() {
+    const selectedAlgos = Array.from(dom.algoCheckContainer.querySelectorAll('input:checked'))
+        .map(chk => chk.dataset.key);
+    
+    return {
+        size: parseInt(dom.sizeSlider.value, 10),
+        speed: parseInt(dom.speedSlider.value, 10),
+        distribution: dom.distSelect.value,
+        seed: dom.seedInput.value === '' ? null : parseInt(dom.seedInput.value, 10),
+        selectedAlgos: selectedAlgos
+    };
+}
+
+/**
+ * Must-Have: Saves settings to localStorage.
+ */
+function saveSettings(settings) {
+    lastSettings = settings;
+    localStorage.setItem('sortingVisualizerSettings', JSON.stringify(lastSettings));
+}
+
+/**
+ * Must-Have: Loads settings from localStorage and applies them.
+ */
+function loadSettings() {
+    const saved = localStorage.getItem('sortingVisualizerSettings');
+    if (saved) {
+        const s = JSON.parse(saved);
+        lastSettings = s;
+        
+        dom.sizeSlider.value = s.size;
+        dom.sizeValue.textContent = s.size;
+        dom.speedSlider.value = s.speed;
+        dom.speedValue.textContent = s.speed;
+        dom.distSelect.value = s.distribution;
+        dom.seedInput.value = s.seed || '';
+        
+        s.selectedAlgos.forEach(key => {
+            const chk = document.getElementById(`chk-${key}`);
+            if (chk) chk.checked = true;
+        });
+    } else {
+        // Default: check first 5
+        ALGORITHMS.slice(0, 5).forEach(algo => {
+             document.getElementById(`chk-${algo.key}`).checked = true;
+        });
+    }
+}
+
+/**
+* Simple LCG seeded random number generator.
+*/
+function createSeededRandom(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return () => {
+        s = (s * 16807) % 2147483647;
+        return (s - 1) / 2147483646;
+    };
+}
+
+/**
+ * Must-Have: Creates the initial array based on distribution and seed.
+ */
+function createArray(size, distribution, seed) {
+    const arr = new Array(size);
+    const random = (seed !== null) ? createSeededRandom(seed) : Math.random;
+    
+    const randomInt = (min, max) => Math.floor(random() * (max - min + 1)) + min;
+    const gaussianRandom = () => {
+        // Simple approx: sum 3 randoms
+        return (random() + random() + random()) / 3;
+    };
+
+    switch (distribution) {
+        case 'reversed':
+            for (let i = 0; i < size; i++) arr[i] = size - i;
+            break;
+        case 'nearlySorted':
+            for (let i = 0; i < size; i++) arr[i] = i + 1;
+            // 10% noise
+            const swaps = Math.floor(size * 0.1);
+            for (let i = 0; i < swaps; i++) {
+                const a = randomInt(0, size - 1);
+                const b = randomInt(0, size - 1);
+                [arr[a], arr[b]] = [arr[b], arr[a]];
+            }
+            break;
+        case 'fewUnique':
+            // k=5 unique values
+            const uniques = Array.from({length: 5}, () => randomInt(1, size));
+            for (let i = 0; i < size; i++) arr[i] = uniques[randomInt(0, 4)];
+            break;
+        case 'gaussian':
+            for (let i = 0; i < size; i++) {
+                arr[i] = Math.floor(gaussianRandom() * size) + 1;
+            }
+            break;
+        case 'random':
+        default:
+            for (let i = 0; i < size; i++) arr[i] = randomInt(1, size);
+            break;
+    }
+    return arr;
+}
+
+/**
+ * Must-Have: Verifies if an array is sorted.
+ */
+function validateArray(arr) {
+    for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] > arr[i + 1]) {
+            console.warn('Validation Failed at index', i, arr[i], arr[i+1]);
+            return false;
+        }
+    }
+    return true;
+}
+
+// =================================================================================
+// SORTING ALGORITHMS
+// All algorithms are async and follow the same signature.
+// =================================================================================
+
+async function bubbleSort(arr, controller, update, stats, speed) {
+    const n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+        let swapped = false;
+        for (let j = 0; j < n - i - 1; j++) {
+            stats.comparisons++;
+            await update({ [j]: 'compare', [j + 1]: 'compare' });
+            
+            if (arr[j] > arr[j + 1]) {
+                stats.swapsOrWrites += 2;
+                swapped = true;
+                [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                await update({ [j]: 'swap', [j + 1]: 'swap' });
+            }
+        }
+        if (!swapped) break;
+    }
+}
+
+async function selectionSort(arr, controller, update, stats, speed) {
+    const n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+        let minIdx = i;
+        for (let j = i + 1; j < n; j++) {
+            stats.comparisons++;
+            await update({ [i]: 'primary', [j]: 'compare', [minIdx]: 'pivot' });
+            
+            if (arr[j] < arr[minIdx]) {
+                minIdx = j;
+            }
+        }
+        
+        if (minIdx !== i) {
+            stats.swapsOrWrites += 2;
+            [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
+            await update({ [i]: 'swap', [minIdx]: 'swap' });
+        }
+    }
+}
+
+async function insertionSort(arr, controller, update, stats, speed) {
+    const n = arr.length;
+    for (let i = 1; i < n; i++) {
+        let key = arr[i];
+        let j = i - 1;
+        
+        await update({ [i]: 'pivot' });
+
+        stats.comparisons++; // for the while loop condition
+        while (j >= 0 && arr[j] > key) {
+            stats.comparisons++; // for successful comparisons
+            stats.swapsOrWrites++;
+            arr[j + 1] = arr[j];
+            await update({ [j]: 'compare', [j + 1]: 'swap' });
+            j = j - 1;
+        }
+        stats.swapsOrWrites++;
+        arr[j + 1] = key;
+        await update({ [j + 1]: 'swap' });
+    }
+}
+
+async function mergeSort(arr, controller, update, stats, speed) {
+    async function merge(arr, l, m, r) {
+        const n1 = m - l + 1;
+        const n2 = r - m;
+        const L = new Array(n1);
+        const R = new Array(n2);
+
+        for (let i = 0; i < n1; i++) L[i] = arr[l + i];
+        for (let j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
+
+        let i = 0, j = 0, k = l;
+        while (i < n1 && j < n2) {
+            stats.comparisons++;
+            await update({ [l + i]: 'compare', [m + 1 + j]: 'compare' });
+            
+            if (L[i] <= R[j]) {
+                arr[k] = L[i];
+                stats.swapsOrWrites++;
+                i++;
+            } else {
+                arr[k] = R[j];
+                stats.swapsOrWrites++;
+                j++;
+            }
+            await update({ [k]: 'swap' });
+            k++;
+        }
+        while (i < n1) {
+            arr[k] = L[i];
+            stats.swapsOrWrites++;
+            await update({ [k]: 'swap' });
+            i++; k++;
+        }
+        while (j < n2) {
+            arr[k] = R[j];
+            stats.swapsOrWrites++;
+            await update({ [k]: 'swap' });
+            j++; k++;
+        }
+    }
+
+    async function sort(arr, l, r) {
+        if (l >= r) return;
+        const m = l + Math.floor((r - l) / 2);
+        await sort(arr, l, m);
+        await sort(arr, m + 1, r);
+        await merge(arr, l, m, r);
+    }
+    
+    await sort(arr, 0, arr.length - 1);
+}
+
+async function quickSort(arr, controller, update, stats, speed) {
+    async function partition(arr, low, high) {
+        const pivot = arr[high];
+        let i = low - 1;
+        
+        for (let j = low; j < high; j++) {
+            stats.comparisons++;
+            // Must-Have: Pivot highlight (pivot) and partition range (overlay)
+            await update({ [j]: 'compare', [high]: 'pivot' }, { partition: { low, high } });
+            
+            if (arr[j] < pivot) {
+                i++;
+                stats.swapsOrWrites += 2;
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+                await update({ [i]: 'swap', [j]: 'swap' }, { partition: { low, high } });
+            }
+        }
+        stats.swapsOrWrites += 2;
+        [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+        await update({ [i + 1]: 'swap', [high]: 'swap' }, { partition: { low, high } });
+        return i + 1;
+    }
+
+    async function sort(arr, low, high) {
+        if (low < high) {
+            const pi = await partition(arr, low, high);
+            await sort(arr, low, pi - 1);
+            await sort(arr, pi + 1, high);
+        }
+    }
+    
+    await sort(arr, 0, arr.length - 1);
+    // Must-Have: No premature sorted marking. Final sweep is handled by runAlgorithmInstance.
+}
+
+async function heapSort(arr, controller, update, stats, speed) {
+    const n = arr.length;
+
+    async function heapify(n, i) {
+        let largest = i;
+        const l = 2 * i + 1;
+        const r = 2 * i + 2;
+        
+        const highlights = { [i]: 'pivot' };
+        if (l < n) highlights[l] = 'compare';
+        if (r < n) highlights[r] = 'compare';
+        await update(highlights);
+
+        stats.comparisons++;
+        if (l < n && arr[l] > arr[largest]) {
+            largest = l;
+        }
+        stats.comparisons++;
+        if (r < n && arr[r] > arr[largest]) {
+            largest = r;
+        }
+
+        if (largest !== i) {
+            stats.swapsOrWrites += 2;
+            [arr[i], arr[largest]] = [arr[largest], arr[i]];
+            await update({ [i]: 'swap', [largest]: 'swap' });
+            await heapify(n, largest);
+        }
+    }
+
+    // Build heap
+    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+        await heapify(n, i);
+    }
+    
+    // Extract elements
+    for (let i = n - 1; i > 0; i--) {
+        stats.swapsOrWrites += 2;
+        [arr[0], arr[i]] = [arr[i], arr[0]];
+        await update({ [0]: 'swap', [i]: 'swap' });
+        await heapify(i, 0);
+    }
+}
+
+async function countingSort(arr, controller, update, stats, speed) {
+    // Must-Have: Assumes non-negative integers
+    let max = 0;
+    for (const val of arr) {
+        if (val > max) max = val;
+    }
+    
+    const count = new Array(max + 1).fill(0);
+    const output = new Array(arr.length);
+    
+    // 1. Store count of each character
+    for (let i = 0; i < arr.length; i++) {
+        count[arr[i]]++;
+        stats.swapsOrWrites++; // Not really a swap, but a "write" to counts
+        await update({ [i]: 'compare' }, { counts: [...count], message: '1. Counting occurrences' });
+    }
+    
+    // 2. Store prefix sum
+    for (let i = 1; i <= max; i++) {
+        count[i] += count[i - 1];
+        stats.swapsOrWrites++;
+        await update({}, { counts: [...count], message: '2. Calculating prefix sums' });
+    }
+    
+    // 3. Build output array
+    for (let i = arr.length - 1; i >= 0; i--) {
+        const val = arr[i];
+        output[count[val] - 1] = val;
+        count[val]--;
+        stats.swapsOrWrites += 2; // Read from arr, write to output
+        
+        // This is tricky to visualize. We'll show the output array being built
+        // by temporarily writing it into the *start* of the main array.
+        const tempHighlights = {};
+        for(let j=0; j < output.length; j++) {
+            if (output[j] !== undefined) tempHighlights[j] = 'swap';
+        }
+        await update(tempHighlights, { counts: [...count], message: '3. Building output array' });
+    }
+    
+    // 4. Copy back to arr
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = output[i];
+        stats.swapsOrWrites++;
+        await update({ [i]: 'swap' }, { message: '4. Copying back to original array' });
+    }
+}
+
+async function radixSort(arr, controller, update, stats, speed) {
+    // Must-Have: Assumes non-negative integers
+    let max = 0;
+    for (const val of arr) {
+        if (val > max) max = val;
+    }
+    
+    // Internal counting sort by digit (exp)
+    async function countingSortByDigit(exp) {
+        const output = new Array(arr.length);
+        const count = new Array(10).fill(0);
+        
+        const overlayData = (msg) => ({ 
+            counts: [...count], 
+            message: `Radix (10^${Math.log10(exp)} place) - ${msg}` 
+        });
+
+        for (let i = 0; i < arr.length; i++) {
+            const digit = Math.floor(arr[i] / exp) % 10;
+            count[digit]++;
+            stats.swapsOrWrites++;
+            await update({ [i]: 'compare' }, overlayData('1. Counting digits'));
+        }
+        
+        for (let i = 1; i < 10; i++) {
+            count[i] += count[i - 1];
+            stats.swapsOrWrites++;
+            await update({}, overlayData('2. Prefix sums'));
+        }
+        
+        for (let i = arr.length - 1; i >= 0; i--) {
+            const digit = Math.floor(arr[i] / exp) % 10;
+            output[count[digit] - 1] = arr[i];
+            count[digit]--;
+            stats.swapsOrWrites += 2;
+            
+            // Visualize output being built
+            const tempHighlights = {};
+            for(let j=0; j < output.length; j++) {
+                if (output[j] !== undefined) tempHighlights[j] = 'swap';
+            }
+            await update(tempHighlights, overlayData('3. Building output'));
+        }
+        
+        for (let i = 0; i < arr.length; i++) {
+            arr[i] = output[i];
+            stats.swapsOrWrites++;
+            await update({ [i]: 'swap' }, overlayData('4. Copying back'));
+        }
+    }
+    
+    // Main radix loop
+    for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
+        await countingSortByDigit(exp);
+    }
+}
+
+async function bucketSort(arr, controller, update, stats, speed) {
+    // Must-Have: Assumes values start at 1
+    const n = arr.length;
+    if (n === 0) return;
+
+    let max = 1;
+    for (const val of arr) {
+        if (val > max) max = val;
+    }
+
+    const bucketCount = Math.floor(Math.sqrt(n)) || 1;
+    const bucketSize = Math.ceil(max / bucketCount);
+    const buckets = new Array(bucketCount);
+    for (let i = 0; i < bucketCount; i++) {
+        buckets[i] = [];
+    }
+    
+    // 1. Distribute into buckets
+    for (let i = 0; i < n; i++) {
+        const val = arr[i];
+        // Must-Have: `(value - 1)` for 1-based values
+        let bucketIndex = Math.floor((val - 1) / bucketSize);
+        // Ensure it doesn't go out of bounds
+        bucketIndex = Math.max(0, Math.min(bucketIndex, bucketCount - 1));
+        
+        buckets[bucketIndex].push(val);
+        stats.swapsOrWrites++; // "Write" to bucket
+        await update({ [i]: 'compare' }, { buckets: [...buckets], message: '1. Distributing into buckets' });
+    }
+
+    // 2. Sort buckets (using Insertion Sort as requested)
+    let sortedIndex = 0;
+    for (let i = 0; i < bucketCount; i++) {
+        // We sort in-place in the bucket, not on the main array
+        // This is a simplified Insertion Sort for the sub-array
+        const bucket = buckets[i];
+        for (let j = 1; j < bucket.length; j++) {
+            let key = bucket[j];
+            let k = j - 1;
+            stats.comparisons++;
+            while (k >= 0 && bucket[k] > key) {
+                stats.comparisons++;
+                stats.swapsOrWrites++; // Internal bucket write
+                bucket[k + 1] = bucket[k];
+                k--;
+            }
+            stats.swapsOrWrites++; // Internal bucket write
+            bucket[k + 1] = key;
+        }
+        
+        // 3. Visualize placement back into main array
+        for (let j = 0; j < bucket.length; j++) {
+            arr[sortedIndex] = bucket[j];
+            stats.swapsOrWrites++; // Write back to main array
+            await update({ [sortedIndex]: 'swap' }, { buckets: [...buckets], message: `2. Sorting & Merging Bucket ${i}` });
+            sortedIndex++;
+        }
+    }
+}
+
+async function shellSort(arr, controller, update, stats, speed) {
+    const n = arr.length;
+    for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
+        for (let i = gap; i < n; i++) {
+            let temp = arr[i];
+            let j;
+            
+            stats.comparisons++;
+            for (j = i; j >= gap && arr[j - gap] > temp; j -= gap) {
+                stats.comparisons++;
+                stats.swapsOrWrites++;
+                arr[j] = arr[j - gap];
+                await update({ [j]: 'swap', [j - gap]: 'compare' });
+            }
+            stats.swapsOrWrites++;
+            arr[j] = temp;
+            await update({ [j]: 'swap' });
+        }
+    }
+}
+
+
+// --- START ---
+initialize();
+
+</script>
+
+</body>
+</html>
